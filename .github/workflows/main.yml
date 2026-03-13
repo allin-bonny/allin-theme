@@ -1,12 +1,19 @@
+name: Deploy to SFTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
   deploy:
     name: Deploy to SFTP
-    needs: [lint-php, phpcs_check]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout the git repository
         uses: actions/checkout@v4
+
       - name: Deploy to SFTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
