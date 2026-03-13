@@ -27,6 +27,6 @@ jobs:
           lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" sftp://"$SFTP_HOST" << EOF
           set sftp:auto-confirm yes
           set net:max-retries 3
-          mirror -R --delete --verbose ./boilerplate/ $SFTP_REMOTE_DIR
+          mirror -R --delete --verbose ./ $SFTP_REMOTE_DIR
           bye
           EOF
