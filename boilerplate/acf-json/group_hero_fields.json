@@ -1,0 +1,51 @@
+{
+    "key": "group__sk_hero",
+    "title": "Hero Section",
+    "fields": [
+        {
+            "key": "field__sk_hero_heading",
+            "label": "Heading",
+            "name": "_sk_hero_heading",
+            "type": "text"
+        },
+        {
+            "key": "field__sk_hero_subheading",
+            "label": "Sub Heading",
+            "name": "_sk_hero_subheading",
+            "type": "textarea",
+            "rows": 3
+        },
+        {
+            "key": "field__sk_hero_image",
+            "label": "Background Image",
+            "name": "_sk_hero_image",
+            "type": "image",
+            "return_format": "array",
+            "preview_size": "medium"
+        },
+        {
+            "key": "field__sk_hero_cta_text",
+            "label": "CTA Button Text",
+            "name": "_sk_hero_cta_text",
+            "type": "text",
+            "default_value": "Get Started"
+        },
+        {
+            "key": "field__sk_hero_cta_url",
+            "label": "CTA Button URL",
+            "name": "_sk_hero_cta_url",
+            "type": "url"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "page_template",
+                "operator": "==",
+                "value": "default"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "active": true
+}

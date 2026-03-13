@@ -1,0 +1,46 @@
+{
+    "key": "group__sk_header",
+    "title": "Header Settings",
+    "fields": [
+        {
+            "key": "field__sk_logo",
+            "label": "Logo",
+            "name": "_sk_logo",
+            "type": "image",
+            "return_format": "array",
+            "preview_size": "medium"
+        },
+        {
+            "key": "field__sk_logo_retina",
+            "label": "Retina Logo (2x)",
+            "name": "_sk_logo_retina",
+            "type": "image",
+            "return_format": "array",
+            "preview_size": "medium"
+        },
+        {
+            "key": "field__sk_header_cta_text",
+            "label": "Header CTA Text",
+            "name": "_sk_header_cta_text",
+            "type": "text",
+            "default_value": "Contact Us"
+        },
+        {
+            "key": "field__sk_header_cta_url",
+            "label": "Header CTA URL",
+            "name": "_sk_header_cta_url",
+            "type": "url"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "options_page",
+                "operator": "==",
+                "value": "_sk_header_options"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "active": true
+}

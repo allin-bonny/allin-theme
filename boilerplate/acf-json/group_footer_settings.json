@@ -1,0 +1,38 @@
+{
+    "key": "group__sk_footer",
+    "title": "Footer Settings",
+    "fields": [
+        {
+            "key": "field__sk_footer_logo",
+            "label": "Footer Logo",
+            "name": "_sk_footer_logo",
+            "type": "image",
+            "return_format": "array",
+            "preview_size": "medium"
+        },
+        {
+            "key": "field__sk_footer_tagline",
+            "label": "Footer Tagline",
+            "name": "_sk_footer_tagline",
+            "type": "text"
+        },
+        {
+            "key": "field__sk_copyright_text",
+            "label": "Copyright Text",
+            "name": "_sk_copyright_text",
+            "type": "text",
+            "default_value": "© 2025 _sk. All rights reserved."
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "options_page",
+                "operator": "==",
+                "value": "_sk_footer_options"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "active": true
+}

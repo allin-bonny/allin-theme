@@ -1,0 +1,61 @@
+name: PHP Code Linting
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-php:
+    name: Parallel lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+      - name: PHP setup
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 7.4
+      - name: Install composer packages
+        run: composer install --no-progress
+      - name: Check for PHP errors
+        run: composer lint:php
+
+  phpcs_check:
+    name: PHPCS check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+      - name: PHP setup
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 7.4
+      - name: Install composer packages
+        run: composer install --no-progress
+      - name: Check coding standards using PHPCS
+        run: composer lint:wpcs
+
+  deploy:
+    name: Deploy to SFTP
+    needs: [lint-php, phpcs_check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+      - name: Deploy to SFTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          server-dir: ${{ secrets.SFTP_REMOTE_DIR }}
+          local-dir: ./boilerplate/
+          protocol: sftp

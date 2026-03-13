@@ -1,0 +1,47 @@
+{
+    "key": "group__sk_social",
+    "title": "Social Media",
+    "fields": [
+        {
+            "key": "field__sk_facebook",
+            "label": "Facebook URL",
+            "name": "_sk_facebook",
+            "type": "url"
+        },
+        {
+            "key": "field__sk_instagram",
+            "label": "Instagram URL",
+            "name": "_sk_instagram",
+            "type": "url"
+        },
+        {
+            "key": "field__sk_twitter",
+            "label": "Twitter / X URL",
+            "name": "_sk_twitter",
+            "type": "url"
+        },
+        {
+            "key": "field__sk_youtube",
+            "label": "YouTube URL",
+            "name": "_sk_youtube",
+            "type": "url"
+        },
+        {
+            "key": "field__sk_linkedin",
+            "label": "LinkedIn URL",
+            "name": "_sk_linkedin",
+            "type": "url"
+        }
+    ],
+    "location": [
+        [
+            {
+                "param": "options_page",
+                "operator": "==",
+                "value": "_sk_social_options"
+            }
+        ]
+    ],
+    "menu_order": 0,
+    "active": true
+}
