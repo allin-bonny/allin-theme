@@ -14,7 +14,7 @@ jobs:
       - name: Checkout the git repository
         uses: actions/checkout@v4
 
-      - name: Deploy to SFTP
+      - name: Deploy via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.SFTP_HOST }}
@@ -22,4 +22,4 @@ jobs:
           password: ${{ secrets.SFTP_PASSWORD }}
           server-dir: ${{ secrets.SFTP_REMOTE_DIR }}
           local-dir: ./boilerplate/
-          protocol: sftp
+          protocol: ftps
