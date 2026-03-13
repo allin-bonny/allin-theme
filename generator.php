@@ -167,21 +167,75 @@ class StarterKitGenerator
     }
 
     /**
-     * Add bundled plugin ZIPs into a _plugins/ folder inside the kit
+     * List of FREE plugins to fetch from WordPress.org at generation time
+     * slug => WordPress.org plugin slug
+     */
+    private array $wp_org_plugins = [
+        'secure-custom-fields' => 'secure-custom-fields',
+        'custom-post-type-ui' => 'cptui',
+        'wordpress-seo' => 'wordpress-seo',
+        'better-search-replace' => 'better-search-replace',
+        'query-monitor' => 'query-monitor',
+    ];
+
+    /**
+     * Add plugins to ZIP:
+     * - Free plugins: downloaded live from WordPress.org API
+     * - Premium plugins: loaded from local /plugins folder
      */
     private function add_plugins(ZipArchive $zip): void
     {
+
+        // 1. Download free plugins from WordPress.org
+        foreach ($this->wp_org_plugins as $name => $slug) {
+            $zip_contents = $this->fetch_wp_org_plugin($slug);
+            if ($zip_contents) {
+                $zip->addFromString(
+                    $this->theme['slug'] . '/_plugins/' . $slug . '.zip',
+                    $zip_contents
+                );
+            }
+        }
+
+        // 2. Bundle premium/custom plugins from local /plugins folder
         if (!is_dir($this->plugins_dir)) {
             return;
         }
 
-        $plugin_files = glob($this->plugins_dir . '/*.zip');
-
-        foreach ($plugin_files as $plugin_zip) {
+        $premium_plugins = glob($this->plugins_dir . '/*.zip');
+        foreach ($premium_plugins as $plugin_zip) {
             $basename = basename($plugin_zip);
-            // Store as: {theme-slug}/_plugins/plugin-name.zip
-            $zip->addFile($plugin_zip, $this->theme['slug'] . '/_plugins/' . $basename);
+            $zip->addFile(
+                $plugin_zip,
+                $this->theme['slug'] . '/_plugins/' . $basename
+            );
         }
+    }
+
+    /**
+     * Fetch latest plugin ZIP from WordPress.org API
+     */
+    private function fetch_wp_org_plugin(string $slug): string|false
+    {
+
+        // Step 1: Get download URL from WP.org API
+        $api_url = "https://api.wordpress.org/plugins/info/1.0/{$slug}.json";
+        $response = @file_get_contents($api_url);
+
+        if (!$response) {
+            return false;
+        }
+
+        $data = json_decode($response, true);
+
+        if (empty($data['download_link'])) {
+            return false;
+        }
+
+        // Step 2: Download the actual ZIP
+        $zip_contents = @file_get_contents($data['download_link']);
+
+        return $zip_contents ?: false;
     }
 
     /**

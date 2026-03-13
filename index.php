@@ -187,6 +187,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 			font-size: 0.78rem;
 			color: #a78bfa;
 		}
+
+		.plugin-badge.premium {
+			background: rgba(245, 158, 11, 0.1);
+			border-color: rgba(245, 158, 11, 0.3);
+			color: #fbbf24;
+		}
+
+		.plugin-badge small {
+			opacity: 0.6;
+			font-size: 0.7rem;
+		}
 	</style>
 </head>
 
@@ -257,18 +268,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 
 			<p class="section-title">📦 Bundled Plugins</p>
 			<div class="plugins-list">
+
 				<?php
+				// Free plugins from WordPress.org
+				$wp_org = [
+					'secure-custom-fields' => 'Secure Custom Fields',
+					'wordpress-seo' => 'Yoast SEO',
+					'better-search-replace' => 'Better Search Replace',
+					'query-monitor' => 'Query Monitor',
+					'cptui' => 'Custom Post Type UI',
+				];
+				foreach ($wp_org as $slug => $name) {
+					echo '<span class="plugin-badge">⬇ ' . $name . ' <small>(wp.org)</small></span>';
+				}
+
+				// Premium plugins from local /plugins folder
 				$plugin_dir = __DIR__ . '/plugins';
 				if (is_dir($plugin_dir)) {
 					foreach (glob($plugin_dir . '/*.zip') as $p) {
-						$name = str_replace(['-', '.zip'], [' ', ''], basename($p));
-						echo '<span class="plugin-badge">✓ ' . ucwords($name) . '</span>';
+						$name = ucwords(str_replace(['-', '.zip'], [' ', ''], basename($p)));
+						echo '<span class="plugin-badge premium">⭐ ' . $name . ' <small>(premium)</small></span>';
 					}
-				} else {
-					echo '<span style="color:#4a5568;font-size:0.85rem;">No plugins found in /plugins folder.</span>';
 				}
 				?>
+
 			</div>
+
 
 			<button type="submit" name="generate" value="1" class="btn">
 				⬇ Generate &amp; Download ZIP
