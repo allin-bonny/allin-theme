@@ -1,0 +1,48 @@
+name: Deploy to SFTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-php:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+
+      - name: Lint PHP files
+        run: find boilerplate -name "*.php" -exec php -l {} \;
+
+  phpcs_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+
+      - name: Install PHP CodeSniffer
+        run: composer global require squizlabs/php_codesniffer
+
+      - name: Run PHPCS
+        run: phpcs --standard=WordPress boilerplate/
+
+  deploy:
+    name: Deploy to SFTP
+    needs: [lint-php, phpcs_check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout the git repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to SFTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          server-dir: ${{ secrets.SFTP_REMOTE_DIR }}
+          local-dir: ./boilerplate/
+          protocol: sftp
