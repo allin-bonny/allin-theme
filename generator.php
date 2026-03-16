@@ -1,16 +1,54 @@
 <?php
 /**
- * Bonny's WordPress Starter Kit Generator
+ * Allin WordPress Starter Kit Generator
  * Core ZIP builder engine
+ *
+ * @package AllinStarterKit
  */
 
 class StarterKitGenerator
 {
-
     private array $theme = [];
     private string $boilerplate_dir;
     private string $plugins_dir;
     private array $replacements = [];
+
+    /**
+     * Free plugins from WordPress.org
+     * NOT bundled in ZIP — installed via admin notice
+     */
+    private array $wp_org_plugins = [
+        'secure-custom-fields' => [
+            'name' => 'Secure Custom Fields',
+            'slug' => 'secure-custom-fields',
+            'file' => 'secure-custom-fields/secure-custom-fields.php',
+        ],
+        'elementor' => [
+            'name' => 'Elementor',
+            'slug' => 'elementor',
+            'file' => 'elementor/elementor.php',
+        ],
+        'wordpress-seo' => [
+            'name' => 'Yoast SEO',
+            'slug' => 'wordpress-seo',
+            'file' => 'wordpress-seo/wp-seo.php',
+        ],
+        'better-search-replace' => [
+            'name' => 'Better Search Replace',
+            'slug' => 'better-search-replace',
+            'file' => 'better-search-replace/better-search-replace.php',
+        ],
+        'cptui' => [
+            'name' => 'Custom Post Type UI',
+            'slug' => 'cptui',
+            'file' => 'custom-post-type-ui/custom-post-type-ui.php',
+        ],
+        'query-monitor' => [
+            'name' => 'Query Monitor',
+            'slug' => 'query-monitor',
+            'file' => 'query-monitor/query-monitor.php',
+        ],
+    ];
 
     public function __construct(string $boilerplate_dir, string $plugins_dir)
     {
@@ -29,8 +67,8 @@ class StarterKitGenerator
         $this->theme = [
             'name' => $name,
             'slug' => $slug,
-            'prefix' => $this->slug_to_prefix($slug),   // e.g. "my_theme"
-            'const' => strtoupper($this->slug_to_prefix($slug)), // MY_THEME
+            'prefix' => $this->slug_to_prefix($slug),
+            'const' => strtoupper($this->slug_to_prefix($slug)),
             'author' => sanitize_text($data['author'] ?? ''),
             'author_uri' => sanitize_text($data['author_uri'] ?? ''),
             'uri' => sanitize_text($data['theme_uri'] ?? ''),
@@ -38,9 +76,8 @@ class StarterKitGenerator
             'version' => sanitize_text($data['version'] ?? '1.0.0'),
         ];
 
-        // Build all find→replace pairs (mirrors Automattic's approach)
         $this->replacements = [
-            // Style.css header fields
+            // style.css header
             'Theme Name: _sk' => 'Theme Name: ' . $this->theme['name'],
             'Author: _sk Author' => 'Author: ' . $this->theme['author'],
             'Author URI: https://example.com' => 'Author URI: ' . $this->theme['author_uri'],
@@ -49,17 +86,26 @@ class StarterKitGenerator
             'Version: 1.0.0' => 'Version: ' . $this->theme['version'],
             'Text Domain: _sk' => 'Text Domain: ' . $this->theme['slug'],
 
-            // PHP function/class prefixes
-            '_sk_' => $this->theme['prefix'] . '_',        // functions
-            "'_sk'" => "'" . $this->theme['slug'] . "'",    // text domain strings
-            '_SK_' => $this->theme['const'] . '_',         // constants
-            'class _Sk' => 'class ' . $this->slug_to_class($slug), // Class names
-            '_sk-' => $this->theme['slug'] . '-',          // CSS handles & enqueue slugs
-            '"_sk"' => '"' . $this->theme['slug'] . '"',    // double-quoted slug refs
+            // PHP prefixes
+            '_sk_' => $this->theme['prefix'] . '_',
+            "'_sk'" => "'" . $this->theme['slug'] . "'",
+            '_SK_' => $this->theme['const'] . '_',
+            'class _Sk' => 'class ' . $this->slug_to_class($slug),
+            '_sk-' => $this->theme['slug'] . '-',
+            '"_sk"' => '"' . $this->theme['slug'] . '"',
 
-            // ACF/SCF options page & field group keys
+            // Version constant
+            '_S_VERSION' => strtoupper($this->theme['prefix']) . '_VERSION',
+
+            // ACF/SCF options keys
             '"_sk_options"' => '"' . $this->theme['prefix'] . '_options"',
             "'_sk_options'" => "'" . $this->theme['prefix'] . "_options'",
+            '"_sk_header_options"' => '"' . $this->theme['prefix'] . '_header_options"',
+            "'_sk_header_options'" => "'" . $this->theme['prefix'] . "_header_options'",
+            '"_sk_footer_options"' => '"' . $this->theme['prefix'] . '_footer_options"',
+            "'_sk_footer_options'" => "'" . $this->theme['prefix'] . "_footer_options'",
+            '"_sk_social_options"' => '"' . $this->theme['prefix'] . '_social_options"',
+            "'_sk_social_options'" => "'" . $this->theme['prefix'] . "_social_options'",
         ];
     }
 
@@ -79,18 +125,17 @@ class StarterKitGenerator
             throw new \RuntimeException('Could not create ZIP archive.');
         }
 
-        // 1. Add the processed theme files
+        // 1. Add processed theme files
         $this->add_directory($zip, $this->boilerplate_dir, $this->theme['slug']);
 
-        // 2. Bundle pre-selected plugins
-        $this->add_plugins($zip);
+        // 2. Generate and inject required-plugins.php
+        $this->add_required_plugins_notice($zip);
 
-        // 3. Add a mu-plugin that auto-activates bundled plugins on first load
-        $this->add_auto_activator($zip);
+        // 3. Bundle premium plugins only (wp.org plugins are NOT bundled)
+        $this->add_premium_plugins($zip);
 
         $zip->close();
 
-        // Stream ZIP to browser
         $this->stream_zip($zip_path, $this->theme['slug'] . '-starter-kit.zip');
     }
 
@@ -106,7 +151,6 @@ class StarterKitGenerator
 
         foreach ($iterator as $file) {
             $real_path = $file->getRealPath();
-            // Path inside ZIP: slug/inc/acf-options.php etc.
             $local_path = $zip_base . '/' . ltrim(str_replace($dir, '', $real_path), '/\\');
 
             if ($file->isDir()) {
@@ -124,7 +168,6 @@ class StarterKitGenerator
      */
     private function process_contents(string $contents, string $filename): string
     {
-        // Skip binary files (images, fonts, etc.)
         $text_extensions = ['php', 'css', 'js', 'json', 'txt', 'md', 'html', 'xml', 'po', 'pot'];
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
@@ -132,12 +175,10 @@ class StarterKitGenerator
             return $contents;
         }
 
-        // Run all string replacements
         foreach ($this->replacements as $find => $replace) {
             $contents = str_replace($find, $replace, $contents);
         }
 
-        // Rename the theme slug in JSON field group keys (ACF/SCF)
         if ($ext === 'json') {
             $contents = $this->process_acf_json($contents);
         }
@@ -155,11 +196,11 @@ class StarterKitGenerator
             return $json_string;
         }
 
-        // Update the menu_slug in options pages, and location rules that reference theme
         array_walk_recursive($data, function (&$value) {
             if (is_string($value)) {
-                $value = str_replace('_sk', $this->theme['prefix'], $value);
+                $value = str_replace('_sk_', $this->theme['prefix'] . '_', $value);
                 $value = str_replace('_sk-', $this->theme['slug'] . '-', $value);
+                $value = str_replace('_sk', $this->theme['slug'], $value);
             }
         });
 
@@ -167,134 +208,201 @@ class StarterKitGenerator
     }
 
     /**
-     * List of FREE plugins to fetch from WordPress.org at generation time
-     * slug => WordPress.org plugin slug
+     * Generate required-plugins.php dynamically and inject into theme's inc/ folder
      */
-    private array $wp_org_plugins = [
-        'secure-custom-fields' => 'secure-custom-fields',
-        'custom-post-type-ui' => 'cptui',
-        'wordpress-seo' => 'wordpress-seo',
-        'better-search-replace' => 'better-search-replace',
-        'query-monitor' => 'query-monitor',
-    ];
-
-    /**
-     * Add plugins to ZIP:
-     * - Free plugins: downloaded live from WordPress.org API
-     * - Premium plugins: loaded from local /plugins folder
-     */
-    private function add_plugins(ZipArchive $zip): void
+    private function add_required_plugins_notice(ZipArchive $zip): void
     {
+        $prefix = $this->theme['prefix'];
+        $slug = $this->theme['slug'];
+        $name = $this->theme['name'];
 
-        // 1. Download free plugins from WordPress.org
-        foreach ($this->wp_org_plugins as $name => $slug) {
-            $zip_contents = $this->fetch_wp_org_plugin($slug);
-            if ($zip_contents) {
-                $zip->addFromString(
-                    $this->theme['slug'] . '/_plugins/' . $slug . '.zip',
-                    $zip_contents
-                );
+        // Build wp_org plugins array string
+        $wp_org_array = "[\n";
+        foreach ($this->wp_org_plugins as $key => $plugin) {
+            $wp_org_array .= "        '{$key}' => [\n";
+            $wp_org_array .= "            'name' => '{$plugin['name']}',\n";
+            $wp_org_array .= "            'slug' => '{$plugin['slug']}',\n";
+            $wp_org_array .= "            'file' => '{$plugin['file']}',\n";
+            $wp_org_array .= "        ],\n";
+        }
+        $wp_org_array .= "    ]";
+
+        // Build premium plugins array string
+        $premium_array = "[\n";
+        if (is_dir($this->plugins_dir)) {
+            foreach (glob($this->plugins_dir . '/*.zip') as $p) {
+                $basename = basename($p, '.zip');
+                $premium_name = ucwords(str_replace('-', ' ', $basename));
+                $premium_array .= "        '{$basename}' => '{$premium_name}',\n";
             }
         }
+        $premium_array .= "    ]";
 
-        // 2. Bundle premium/custom plugins from local /plugins folder
+        $contents = <<<PHP
+<?php
+/**
+ * Required Plugins Notice
+ *
+ * Displays an admin notice prompting the user to install and activate
+ * all required plugins before using the {$name} theme.
+ *
+ * @package {$slug}
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+/**
+ * Returns the list of required free plugins (WordPress.org)
+ */
+function {$prefix}_required_plugins(): array {
+    return {$wp_org_array};
+}
+
+/**
+ * Returns premium plugins bundled in the theme's /_plugins/ folder
+ */
+function {$prefix}_premium_plugins(): array {
+    return {$premium_array};
+}
+
+/**
+ * Returns list of required plugins that are not yet active
+ */
+function {$prefix}_get_missing_plugins(): array {
+    if ( ! function_exists( 'is_plugin_active' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
+
+    \$missing = [];
+    foreach ( {$prefix}_required_plugins() as \$key => \$plugin ) {
+        if ( ! is_plugin_active( \$plugin['file'] ) ) {
+            \$missing[ \$key ] = \$plugin;
+        }
+    }
+
+    return \$missing;
+}
+
+/**
+ * Admin notice: list missing plugins with Install / Activate links
+ */
+function {$prefix}_required_plugins_notice(): void {
+    if ( ! current_user_can( 'install_plugins' ) ) {
+        return;
+    }
+
+    \$missing = {$prefix}_get_missing_plugins();
+    if ( empty( \$missing ) ) {
+        return;
+    }
+
+    \$links = [];
+    foreach ( \$missing as \$plugin ) {
+        \$plugin_path = WP_PLUGIN_DIR . '/' . dirname( \$plugin['file'] );
+
+        if ( file_exists( \$plugin_path ) ) {
+            \$url     = wp_nonce_url(
+                admin_url( 'plugins.php?action=activate&plugin=' . \$plugin['file'] ),
+                'activate-plugin_' . \$plugin['file']
+            );
+            \$action  = 'Activate';
+        } else {
+            \$url     = wp_nonce_url(
+                admin_url( 'update.php?action=install-plugin&plugin=' . \$plugin['slug'] ),
+                'install-plugin_' . \$plugin['slug']
+            );
+            \$action  = 'Install';
+        }
+
+        \$links[] = sprintf(
+            '<a href="%s"><strong>%s</strong> (%s)</a>',
+            esc_url( \$url ),
+            esc_html( \$plugin['name'] ),
+            \$action
+        );
+    }
+
+    // Premium plugin notice
+    \$premium_notices = [];
+    foreach ( {$prefix}_premium_plugins() as \$basename => \$pname ) {
+        \$zip_path = get_template_directory() . '/_plugins/' . \$basename . '.zip';
+        if ( file_exists( \$zip_path ) ) {
+            \$premium_notices[] = '<strong>' . esc_html( \$pname ) . '</strong>';
+        }
+    }
+
+    ?>
+    <div class="notice notice-warning is-dismissible" style="border-left-color: #f59e0b; padding: 12px 16px;">
+        <p style="font-size: 14px;">
+            <strong>⚠ {$name} — Required Plugins:</strong>
+            Please install and activate the following plugins before activating this theme:
+        </p>
+        <p><?php echo implode( ' &nbsp;&nbsp;|&nbsp;&nbsp; ', \$links ); ?></p>
+        <?php if ( ! empty( \$premium_notices ) ) : ?>
+            <p>
+                <strong>Premium plugins</strong> are bundled in the theme's <code>/_plugins/</code> folder.
+                Please upload them manually via <a href="<?php echo admin_url( 'plugin-install.php' ); ?>">Plugins → Add New → Upload</a>:<br>
+                <?php echo implode( ', ', \$premium_notices ); ?>
+            </p>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+add_action( 'admin_notices', '{$prefix}_required_plugins_notice' );
+
+/**
+ * Block theme activation entirely if required plugins are missing
+ */
+function {$prefix}_check_plugins_on_activation(): void {
+    \$missing = {$prefix}_get_missing_plugins();
+
+    if ( empty( \$missing ) ) {
+        return;
+    }
+
+    \$names = array_column( \$missing, 'name' );
+
+    wp_die(
+        '<h2 style="color:#b91c1c;">⚠ Cannot Activate {$name}</h2>' .
+        '<p>The following required plugins must be installed and activated first:</p>' .
+        '<ul style="list-style:disc;padding-left:20px"><li>' .
+            implode( '</li><li>', array_map( 'esc_html', \$names ) ) .
+        '</li></ul>' .
+        '<p><a href="' . admin_url( 'plugins.php' ) . '" class="button button-primary">→ Go to Plugins</a></p>',
+        'Plugin Requirements Not Met',
+        [ 'back_link' => true ]
+    );
+}
+add_action( 'after_switch_theme', '{$prefix}_check_plugins_on_activation' );
+PHP;
+
+        $zip->addFromString(
+            $slug . '/inc/required-plugins.php',
+            $contents
+        );
+    }
+
+    /**
+     * Add ONLY premium plugins from local /plugins folder
+     */
+    private function add_premium_plugins(ZipArchive $zip): void
+    {
         if (!is_dir($this->plugins_dir)) {
             return;
         }
 
-        $premium_plugins = glob($this->plugins_dir . '/*.zip');
-        foreach ($premium_plugins as $plugin_zip) {
-            $basename = basename($plugin_zip);
+        foreach (glob($this->plugins_dir . '/*.zip') as $plugin_zip) {
             $zip->addFile(
                 $plugin_zip,
-                $this->theme['slug'] . '/_plugins/' . $basename
+                $this->theme['slug'] . '/_plugins/' . basename($plugin_zip)
             );
         }
     }
 
     /**
-     * Fetch latest plugin ZIP from WordPress.org API
-     */
-    private function fetch_wp_org_plugin(string $slug): string|false
-    {
-
-        // Step 1: Get download URL from WP.org API
-        $api_url = "https://api.wordpress.org/plugins/info/1.0/{$slug}.json";
-        $response = @file_get_contents($api_url);
-
-        if (!$response) {
-            return false;
-        }
-
-        $data = json_decode($response, true);
-
-        if (empty($data['download_link'])) {
-            return false;
-        }
-
-        // Step 2: Download the actual ZIP
-        $zip_contents = @file_get_contents($data['download_link']);
-
-        return $zip_contents ?: false;
-    }
-
-    /**
-     * Inject a mu-plugin that auto-activates bundled plugins on first WP load
-     */
-    private function add_auto_activator(ZipArchive $zip): void
-    {
-        $slug = $this->theme['slug'];
-        $prefix = $this->theme['prefix'];
-
-        $mu_plugin = <<<PHP
-<?php
-/**
- * Auto Plugin Activator — generated by {$this->theme['name']} Starter Kit
- * Place this file in /wp-content/mu-plugins/
- * It runs once, installs & activates bundled plugins, then self-deletes.
- */
-
-add_action( 'admin_init', '{$prefix}_auto_activate_plugins' );
-
-function {$prefix}_auto_activate_plugins() {
-    \$flag = get_option( '{$prefix}_plugins_activated' );
-    if ( \$flag ) return;
-
-    \$plugins_dir = get_template_directory() . '/_plugins/';
-    if ( ! is_dir( \$plugins_dir ) ) return;
-
-    require_once ABSPATH . 'wp-admin/includes/plugin.php';
-    require_once ABSPATH . 'wp-admin/includes/file.php';
-    require_once ABSPATH . 'wp-admin/includes/misc.php';
-    require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
-
-    \$zip_files = glob( \$plugins_dir . '*.zip' );
-
-    foreach ( \$zip_files as \$zip_file ) {
-        \$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
-        \$result   = \$upgrader->install( \$zip_file );
-
-        if ( ! is_wp_error( \$result ) ) {
-            \$plugin_data = get_plugins( '/' . \$upgrader->result['destination_name'] );
-            if ( ! empty( \$plugin_data ) ) {
-                \$plugin_file = \$upgrader->result['destination_name'] . '/' . array_key_first( \$plugin_data );
-                activate_plugin( \$plugin_file );
-            }
-        }
-    }
-
-    update_option( '{$prefix}_plugins_activated', true );
-}
-PHP;
-
-        $zip->addFromString(
-            $slug . '/_mu-plugin/' . $prefix . '-auto-activate.php',
-            $mu_plugin
-        );
-    }
-
-    /**
-     * Stream the ZIP file to the browser as a download
+     * Stream ZIP to browser and clean up temp file
      */
     private function stream_zip(string $zip_path, string $download_name): void
     {
@@ -309,13 +417,11 @@ PHP;
         header('Expires: 0');
 
         readfile($zip_path);
-
-        // Cleanup temp file
         @unlink($zip_path);
         exit;
     }
 
-    // ─── Helpers ────────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private function sanitize_slug(string $slug): string
     {
@@ -324,12 +430,12 @@ PHP;
 
     private function slug_to_prefix(string $slug): string
     {
-        return str_replace('-', '_', $slug);  // my-theme → my_theme
+        return str_replace('-', '_', $slug);
     }
 
     private function slug_to_class(string $slug): string
     {
-        return str_replace(' ', '_', ucwords(str_replace('-', ' ', $slug))); // my-theme → My_Theme
+        return str_replace(' ', '_', ucwords(str_replace('-', ' ', $slug)));
     }
 }
 
