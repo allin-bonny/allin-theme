@@ -285,12 +285,59 @@ function {$prefix}_setup_page_url(): string {
 
 // ── On Theme Activation: set flag only, NO wp_die ────────────────────────────
 
+// ── On Theme Activation ───────────────────────────────────────────────────────
+
 function {$prefix}_check_plugins_on_activation(): void {
+
+    // Auto-install premium bundled plugins (do NOT activate them)
+    {$prefix}_install_premium_plugins();
+
+    // Then check if free required plugins are active
     if ( {$prefix}_all_required_active() ) {
         return;
     }
+
+    // Set redirect flag — admin_init will handle the redirect
     update_option( '{$prefix}_redirect_to_setup', true );
 }
+add_action( 'after_switch_theme', '{$prefix}_check_plugins_on_activation' );
+
+/**
+ * Install premium plugins from /_plugins/ folder silently.
+ * Does NOT activate them — user activates manually.
+ */
+function {$prefix}_install_premium_plugins(): void {
+    \$plugins_dir = get_template_directory() . '/_plugins/';
+
+    if ( ! is_dir( \$plugins_dir ) ) {
+        return;
+    }
+
+    \$zip_files = glob( \$plugins_dir . '*.zip' );
+
+    if ( empty( \$zip_files ) ) {
+        return;
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+    foreach ( \$zip_files as \$zip_file ) {
+        \$plugin_folder = basename( \$zip_file, '.zip' );
+
+        // Skip if already installed
+        if ( is_dir( WP_PLUGIN_DIR . '/' . \$plugin_folder ) ) {
+            continue;
+        }
+
+        // Install silently — no activation
+        \$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
+        \$upgrader->install( \$zip_file );
+    }
+}
+
 add_action( 'after_switch_theme', '{$prefix}_check_plugins_on_activation' );
 
 function {$prefix}_maybe_redirect_to_setup(): void {
@@ -451,22 +498,45 @@ function {$prefix}_render_setup_page(): void {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ( \$premium as \$basename => \$pname ) : ?>
-                    <tr>
-                        <td style="text-align:center;font-size:18px;">⭐</td>
-                        <td>
-                            <strong><?php echo esc_html( \$pname ); ?></strong><br>
-                            <small style="color:#6b7280;">
-                                <code>/_plugins/<?php echo esc_html( \$basename ); ?>.zip</code>
-                            </small>
-                        </td>
-                        <td>
-                            <a href="<?php echo esc_url( admin_url( 'plugin-install.php' ) ); ?>" class="button button-secondary button-small">
-                                Plugins → Add New → Upload Plugin
-                            </a>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
+                    <?php foreach ( \$premium as \$basename => \$pname ) :
+    \$is_installed = is_dir( WP_PLUGIN_DIR . '/' . \$basename );
+    \$plugin_files = \$is_installed ? get_plugins( '/' . \$basename ) : [];
+    \$plugin_file  = \$is_installed && ! empty( \$plugin_files )
+        ? \$basename . '/' . array_key_first( \$plugin_files )
+        : '';
+    \$is_active    = \$plugin_file && is_plugin_active( \$plugin_file );
+?>
+<tr>
+    <td style="text-align:center;font-size:18px;">
+        <?php echo \$is_active ? '🟢' : ( \$is_installed ? '🟡' : '🔴' ); ?>
+    </td>
+    <td>
+        <strong><?php echo esc_html( \$pname ); ?></strong><br>
+        <small style="color:#6b7280;">
+            <code>/_plugins/<?php echo esc_html( \$basename ); ?>.zip</code>
+        </small>
+    </td>
+    <td>
+        <?php if ( \$is_active ) : ?>
+            <span style="color:#16a34a;font-weight:600;">✅ Active</span>
+        <?php elseif ( \$is_installed && \$plugin_file ) :
+            \$activate_url = wp_nonce_url(
+                admin_url( 'plugins.php?action=activate&plugin=' . \$plugin_file ),
+                'activate-plugin_' . \$plugin_file
+            ); ?>
+            <span style="color:#d97706;font-weight:600;">⚠ Installed</span>
+            <a href="<?php echo esc_url( \$activate_url ); ?>" class="button button-primary button-small" style="margin-left:8px;">
+                Activate
+            </a>
+        <?php else : ?>
+            <span style="color:#dc2626;font-weight:600;">✗ Not installed</span>
+            <small style="display:block;color:#6b7280;margin-top:4px;">
+                Will auto-install on next theme activation
+            </small>
+        <?php endif; ?>
+    </td>
+</tr>
+<?php endforeach; ?>
                 </tbody>
             </table>
         </div>
