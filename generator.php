@@ -18,37 +18,53 @@ class StarterKitGenerator
      * NOT bundled in ZIP — installed via admin notice
      */
     private array $wp_org_plugins = [
-        'secure-custom-fields' => [
-            'name' => 'Secure Custom Fields',
-            'slug' => 'secure-custom-fields',
-            'file' => 'secure-custom-fields/secure-custom-fields.php',
-        ],
         'elementor' => [
             'name' => 'Elementor',
             'slug' => 'elementor',
             'file' => 'elementor/elementor.php',
+        ],
+        'secure-custom-fields' => [
+            'name' => 'Secure Custom Fields',
+            'slug' => 'secure-custom-fields',
+            'file' => 'secure-custom-fields/secure-custom-fields.php',
         ],
         'wordpress-seo' => [
             'name' => 'Yoast SEO',
             'slug' => 'wordpress-seo',
             'file' => 'wordpress-seo/wp-seo.php',
         ],
+        'permalink-manager' => [
+            'name' => 'Permalink Manager Lite',
+            'slug' => 'permalink-manager',
+            'file' => 'permalink-manager/permalink-manager.php',
+        ],
+        'identity-mirror' => [
+            'name' => 'Identity Mirror',
+            'slug' => 'identity-mirror',
+            'file' => 'identity-mirror/identity-mirror.php',
+        ],
         'better-search-replace' => [
             'name' => 'Better Search Replace',
             'slug' => 'better-search-replace',
             'file' => 'better-search-replace/better-search-replace.php',
         ],
-        'cptui' => [
-            'name' => 'Custom Post Type UI',
-            'slug' => 'cptui',
-            'file' => 'custom-post-type-ui/custom-post-type-ui.php',
+        'wp-mail-smtp' => [
+            'name' => 'WP Mail SMTP',
+            'slug' => 'wp-mail-smtp',
+            'file' => 'wp-mail-smtp/wp-mail-smtp.php',
         ],
-        'query-monitor' => [
-            'name' => 'Query Monitor',
-            'slug' => 'query-monitor',
-            'file' => 'query-monitor/query-monitor.php',
+        'classic-editor' => [
+            'name' => 'Classic Editor',
+            'slug' => 'classic-editor',
+            'file' => 'classic-editor/classic-editor.php',
+        ],
+        'duplicate-page' => [
+            'name' => 'Duplicate Page',
+            'slug' => 'duplicate-page',
+            'file' => 'duplicate-page/duplicate-page.php',
         ],
     ];
+
 
     public function __construct(string $boilerplate_dir, string $plugins_dir)
     {

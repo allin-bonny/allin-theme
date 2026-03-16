@@ -34,17 +34,7 @@ function _sk_required_plugins(): array
             'name' => 'Better Search Replace',
             'slug' => 'better-search-replace',
             'file' => 'better-search-replace/better-search-replace.php',
-        ],
-        'cptui' => [
-            'name' => 'Custom Post Type UI',
-            'slug' => 'cptui',
-            'file' => 'custom-post-type-ui/custom-post-type-ui.php',
-        ],
-        'query-monitor' => [
-            'name' => 'Query Monitor',
-            'slug' => 'query-monitor',
-            'file' => 'query-monitor/query-monitor.php',
-        ],
+        ]
     ];
 }
 

@@ -25,13 +25,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 
 // Plugin data (mirrors generator.php — keep in sync)
 $wp_org_plugins = [
-	'secure-custom-fields' => 'Secure Custom Fields',
 	'elementor' => 'Elementor',
+	'secure-custom-fields' => 'Secure Custom Fields',
 	'wordpress-seo' => 'Yoast SEO',
+	'permalink-manager' => 'Permalink Manager Lite',
+	'identity-mirror' => 'Identity Mirror',
 	'better-search-replace' => 'Better Search Replace',
-	'cptui' => 'Custom Post Type UI',
-	'query-monitor' => 'Query Monitor',
+	'wp-mail-smtp' => 'WP Mail SMTP',
+	'classic-editor' => 'Classic Editor',
+	'duplicate-page' => 'Duplicate Page',
 ];
+
 
 $premium_plugins = [];
 $plugin_dir = __DIR__ . '/plugins';
