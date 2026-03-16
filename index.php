@@ -4,8 +4,6 @@ require_once __DIR__ . '/generator.php';
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
-
-	// Basic validation
 	if (empty($_POST['name']))
 		$errors[] = 'Theme name is required.';
 	if (empty($_POST['slug']))
@@ -18,10 +16,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 				__DIR__ . '/plugins'
 			);
 			$generator->set_theme($_POST);
-			$generator->generate(); // Streams ZIP + exits
+			$generator->generate();
 		} catch (Exception $e) {
 			$errors[] = 'Generator error: ' . $e->getMessage();
 		}
+	}
+}
+
+// Plugin data (mirrors generator.php — keep in sync)
+$wp_org_plugins = [
+	'secure-custom-fields' => 'Secure Custom Fields',
+	'elementor' => 'Elementor',
+	'wordpress-seo' => 'Yoast SEO',
+	'better-search-replace' => 'Better Search Replace',
+	'cptui' => 'Custom Post Type UI',
+	'query-monitor' => 'Query Monitor',
+];
+
+$premium_plugins = [];
+$plugin_dir = __DIR__ . '/plugins';
+if (is_dir($plugin_dir)) {
+	foreach (glob($plugin_dir . '/*.zip') as $p) {
+		$basename = basename($p, '.zip');
+		$premium_plugins[$basename] = ucwords(str_replace('-', ' ', $basename));
 	}
 }
 ?>
@@ -56,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 			border-radius: 16px;
 			padding: 2.5rem;
 			width: 100%;
-			max-width: 600px;
+			max-width: 640px;
 			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 		}
 
@@ -169,34 +186,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			color: #667eea;
+			margin-bottom: 0.75rem;
+		}
+
+		/* Plugin blocks */
+		.plugin-group {
 			margin-bottom: 1rem;
+		}
+
+		.plugin-group-label {
+			font-size: 0.7rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.06em;
+			margin-bottom: 0.5rem;
+		}
+
+		.plugin-group-label.free {
+			color: #a78bfa;
+		}
+
+		.plugin-group-label.premium {
+			color: #fbbf24;
 		}
 
 		.plugins-list {
 			display: flex;
 			flex-wrap: wrap;
-			gap: 0.5rem;
-			margin-bottom: 1rem;
+			gap: 0.4rem;
 		}
 
 		.plugin-badge {
+			border-radius: 20px;
+			padding: 0.28rem 0.7rem;
+			font-size: 0.76rem;
+			display: flex;
+			align-items: center;
+			gap: 0.3rem;
+		}
+
+		.plugin-badge.free {
 			background: rgba(102, 126, 234, 0.1);
 			border: 1px solid rgba(102, 126, 234, 0.3);
-			border-radius: 20px;
-			padding: 0.3rem 0.75rem;
-			font-size: 0.78rem;
 			color: #a78bfa;
 		}
 
 		.plugin-badge.premium {
 			background: rgba(245, 158, 11, 0.1);
-			border-color: rgba(245, 158, 11, 0.3);
+			border: 1px solid rgba(245, 158, 11, 0.3);
 			color: #fbbf24;
 		}
 
 		.plugin-badge small {
-			opacity: 0.6;
-			font-size: 0.7rem;
+			opacity: 0.55;
+			font-size: 0.68rem;
+		}
+
+		.info-box {
+			background: rgba(102, 126, 234, 0.06);
+			border: 1px solid rgba(102, 126, 234, 0.2);
+			border-radius: 8px;
+			padding: 0.75rem 1rem;
+			font-size: 0.78rem;
+			color: #94a3b8;
+			line-height: 1.6;
+			margin-top: 0.75rem;
+		}
+
+		.info-box strong {
+			color: #a78bfa;
 		}
 	</style>
 </head>
@@ -210,13 +268,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 		<?php if (!empty($errors)): ?>
 			<div class="errors">
 				<?php foreach ($errors as $e)
-					echo '<div>⚠ ' . esc_html($e) . '</div>'; ?>
+					echo '<div>⚠ ' . htmlspecialchars($e) . '</div>'; ?>
 			</div>
 		<?php endif; ?>
 
 		<form method="POST">
 
-			<p class="section-title">Theme Identity</p>
+			<p class="section-title">🎨 Theme Identity</p>
 
 			<div class="form-row">
 				<div class="form-group">
@@ -228,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 					<label for="slug">Theme Slug *</label>
 					<input type="text" id="slug" name="slug" placeholder="tdd-starter-theme"
 						value="<?= htmlspecialchars($_POST['slug'] ?? '') ?>" required>
-					<p class="hint">Lowercase, hyphens only. Used for prefixes &amp; text domain.</p>
+					<p class="hint">Lowercase, hyphens only. Used for prefix &amp; text domain.</p>
 				</div>
 			</div>
 
@@ -254,65 +312,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 			<div class="form-row">
 				<div class="form-group">
 					<label for="author_uri">Author URI</label>
-					<input type="url" id="author_uri" name="author_uri" placeholder=""
+					<input type="url" id="author_uri" name="author_uri"
 						value="<?= htmlspecialchars($_POST['author_uri'] ?? 'https://thedigitaldepartment.ie/') ?>">
 				</div>
 				<div class="form-group">
 					<label for="theme_uri">Theme URI</label>
-					<input type="url" id="theme_uri" name="theme_uri" placeholder=""
+					<input type="url" id="theme_uri" name="theme_uri"
 						value="<?= htmlspecialchars($_POST['theme_uri'] ?? 'https://thedigitaldepartment.ie/') ?>">
 				</div>
 			</div>
 
 			<hr class="divider">
 
-			<p class="section-title">Bundled Plugins</p>
-			<div class="plugins-list">
+			<p class="section-title">📦 Plugins Included</p>
 
-				<?php
-				// Free plugins from WordPress.org
-				$wp_org = [
-					'secure-custom-fields' => 'Secure Custom Fields',
-					'wordpress-seo' => 'Yoast SEO',
-					'better-search-replace' => 'Better Search Replace',
-					'query-monitor' => 'Query Monitor',
-					'cptui' => 'Custom Post Type UI',
-				];
-				foreach ($wp_org as $slug => $name) {
-					echo '<span class="plugin-badge">⬇ ' . $name . ' <small>(wp.org)</small></span>';
-				}
-
-				// Premium plugins from local /plugins folder
-				$plugin_dir = __DIR__ . '/plugins';
-				if (is_dir($plugin_dir)) {
-					foreach (glob($plugin_dir . '/*.zip') as $p) {
-						$name = ucwords(str_replace(['-', '.zip'], [' ', ''], basename($p)));
-						echo '<span class="plugin-badge premium">⭐ ' . $name . ' <small>(premium)</small></span>';
-					}
-				}
-				?>
-
+			<!-- Free wp.org plugins -->
+			<div class="plugin-group">
+				<p class="plugin-group-label free">⬇ From WordPress.org — installed via setup page</p>
+				<div class="plugins-list">
+					<?php foreach ($wp_org_plugins as $slug => $name): ?>
+						<span class="plugin-badge free">
+							<?= htmlspecialchars($name) ?>
+							<small>(wp.org)</small>
+						</span>
+					<?php endforeach; ?>
+				</div>
 			</div>
 
+			<!-- Premium bundled plugins -->
+			<?php if (!empty($premium_plugins)): ?>
+				<div class="plugin-group">
+					<p class="plugin-group-label premium">⭐ Premium — auto-installed on theme activation</p>
+					<div class="plugins-list">
+						<?php foreach ($premium_plugins as $basename => $name): ?>
+							<span class="plugin-badge premium">
+								<?= htmlspecialchars($name) ?>
+								<small>(bundled)</small>
+							</span>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			<?php else: ?>
+				<div class="plugin-group">
+					<p style="color:#4a5568;font-size:0.8rem;">No premium plugins found in /plugins folder.</p>
+				</div>
+			<?php endif; ?>
+
+			<div class="info-box">
+				<strong>How plugins work:</strong><br>
+				• <strong>wp.org plugins</strong> — listed on the Theme Setup page after activation. Install with one
+				click.<br>
+				• <strong>Premium plugins</strong> — automatically installed (not activated) when the theme is
+				activated. Activate them manually from the Theme Setup page.
+			</div>
+
+			<hr class="divider">
 
 			<button type="submit" name="generate" value="1" class="btn">
-				⬇ Generate &amp; Download Theme
+				⬇ Generate &amp; Download Theme ZIP
 			</button>
 
 		</form>
 	</div>
 
 	<script>
-		// Auto-generate slug from theme name
 		document.getElementById('name').addEventListener('input', function () {
 			const slugField = document.getElementById('slug');
-			if (slugField.dataset.manual) return; // don't override manual input
+			if (slugField.dataset.manual) return;
 			slugField.value = this.value
 				.toLowerCase()
 				.trim()
 				.replace(/[^a-z0-9\s-]/g, '')
 				.replace(/\s+/g, '-');
 		});
+
 		document.getElementById('slug').addEventListener('input', function () {
 			this.dataset.manual = 'true';
 		});
