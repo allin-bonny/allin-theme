@@ -296,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 
 
 			<button type="submit" name="generate" value="1" class="btn">
-				⬇ Generate &amp; Download ZIP
+				⬇ Generate &amp; Download Theme
 			</button>
 
 		</form>
