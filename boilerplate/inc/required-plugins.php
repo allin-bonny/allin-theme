@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 function _sk_required_plugins(): array
