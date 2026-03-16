@@ -241,10 +241,7 @@ class StarterKitGenerator
         $contents = <<<PHP
 <?php
 /**
- * Required Plugins Notice
- *
- * Displays an admin notice prompting the user to install and activate
- * all required plugins before using the {$name} theme.
+ * Required Plugins Notice & Setup Page
  *
  * @package {$slug}
  */
@@ -253,129 +250,238 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/**
- * Returns the list of required free plugins (WordPress.org)
- */
+// ── Data ──────────────────────────────────────────────────────────────────────
+
 function {$prefix}_required_plugins(): array {
     return {$wp_org_array};
 }
 
-/**
- * Returns premium plugins bundled in the theme's /_plugins/ folder
- */
 function {$prefix}_premium_plugins(): array {
     return {$premium_array};
 }
 
-/**
- * Returns list of required plugins that are not yet active
- */
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function {$prefix}_get_missing_plugins(): array {
     if ( ! function_exists( 'is_plugin_active' ) ) {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
     }
-
     \$missing = [];
     foreach ( {$prefix}_required_plugins() as \$key => \$plugin ) {
         if ( ! is_plugin_active( \$plugin['file'] ) ) {
             \$missing[ \$key ] = \$plugin;
         }
     }
-
     return \$missing;
 }
 
-/**
- * Admin notice: list missing plugins with Install / Activate links
- */
+function {$prefix}_all_required_active(): bool {
+    return empty( {$prefix}_get_missing_plugins() );
+}
+
+function {$prefix}_setup_page_url(): string {
+    return admin_url( 'themes.php?page={$slug}-setup' );
+}
+
+// ── On Theme Activation: set flag only, NO wp_die ────────────────────────────
+
+function {$prefix}_check_plugins_on_activation(): void {
+    if ( {$prefix}_all_required_active() ) {
+        return;
+    }
+    update_option( '{$prefix}_redirect_to_setup', true );
+}
+add_action( 'after_switch_theme', '{$prefix}_check_plugins_on_activation' );
+
+function {$prefix}_maybe_redirect_to_setup(): void {
+    if ( ! get_option( '{$prefix}_redirect_to_setup' ) ) {
+        return;
+    }
+    delete_option( '{$prefix}_redirect_to_setup' );
+    if ( ! {$prefix}_all_required_active() ) {
+        wp_safe_redirect( {$prefix}_setup_page_url() );
+        exit;
+    }
+}
+add_action( 'admin_init', '{$prefix}_maybe_redirect_to_setup' );
+
+// ── Admin Notice (banner only) ────────────────────────────────────────────────
+
 function {$prefix}_required_plugins_notice(): void {
     if ( ! current_user_can( 'install_plugins' ) ) {
         return;
     }
 
-    \$missing = {$prefix}_get_missing_plugins();
-    if ( empty( \$missing ) ) {
+    \$screen = get_current_screen();
+    if ( \$screen && \$screen->id === 'appearance_page_{$slug}-setup' ) {
         return;
     }
 
-    \$links = [];
-    foreach ( \$missing as \$plugin ) {
-        \$plugin_path = WP_PLUGIN_DIR . '/' . dirname( \$plugin['file'] );
-
-        if ( file_exists( \$plugin_path ) ) {
-            \$url     = wp_nonce_url(
-                admin_url( 'plugins.php?action=activate&plugin=' . \$plugin['file'] ),
-                'activate-plugin_' . \$plugin['file']
-            );
-            \$action  = 'Activate';
-        } else {
-            \$url     = wp_nonce_url(
-                admin_url( 'update.php?action=install-plugin&plugin=' . \$plugin['slug'] ),
-                'install-plugin_' . \$plugin['slug']
-            );
-            \$action  = 'Install';
-        }
-
-        \$links[] = sprintf(
-            '<a href="%s"><strong>%s</strong> (%s)</a>',
-            esc_url( \$url ),
-            esc_html( \$plugin['name'] ),
-            \$action
-        );
+    if ( {$prefix}_all_required_active() ) {
+        return;
     }
 
-    // Premium plugin notice
-    \$premium_notices = [];
-    foreach ( {$prefix}_premium_plugins() as \$basename => \$pname ) {
-        \$zip_path = get_template_directory() . '/_plugins/' . \$basename . '.zip';
-        if ( file_exists( \$zip_path ) ) {
-            \$premium_notices[] = '<strong>' . esc_html( \$pname ) . '</strong>';
-        }
-    }
-
+    \$missing       = {$prefix}_get_missing_plugins();
+    \$missing_count = count( \$missing );
+    \$setup_url     = {$prefix}_setup_page_url();
     ?>
-    <div class="notice notice-warning is-dismissible" style="border-left-color: #f59e0b; padding: 12px 16px;">
-        <p style="font-size: 14px;">
-            <strong>⚠ {$name} — Required Plugins:</strong>
-            Please install and activate the following plugins before activating this theme:
+    <div class="notice notice-warning is-dismissible" style="border-left-color:#f59e0b;">
+        <p>
+            <strong>⚠ {$name} Theme:</strong>
+            <?php echo esc_html( \$missing_count ); ?> required
+            <?php echo \$missing_count === 1 ? 'plugin is' : 'plugins are'; ?>
+            not active yet.
+            <a href="<?php echo esc_url( \$setup_url ); ?>" style="font-weight:600;">
+                → Go to Theme Setup
+            </a>
         </p>
-        <p><?php echo implode( ' &nbsp;&nbsp;|&nbsp;&nbsp; ', \$links ); ?></p>
-        <?php if ( ! empty( \$premium_notices ) ) : ?>
-            <p>
-                <strong>Premium plugins</strong> are bundled in the theme's <code>/_plugins/</code> folder.
-                Please upload them manually via <a href="<?php echo admin_url( 'plugin-install.php' ); ?>">Plugins → Add New → Upload</a>:<br>
-                <?php echo implode( ', ', \$premium_notices ); ?>
-            </p>
-        <?php endif; ?>
     </div>
     <?php
 }
 add_action( 'admin_notices', '{$prefix}_required_plugins_notice' );
 
-/**
- * Block theme activation entirely if required plugins are missing
- */
-function {$prefix}_check_plugins_on_activation(): void {
-    \$missing = {$prefix}_get_missing_plugins();
+// ── Register Setup Page ───────────────────────────────────────────────────────
 
-    if ( empty( \$missing ) ) {
-        return;
-    }
-
-    \$names = array_column( \$missing, 'name' );
-
-    wp_die(
-        '<h2 style="color:#b91c1c;">⚠ Cannot Activate {$name}</h2>' .
-        '<p>The following required plugins must be installed and activated first:</p>' .
-        '<ul style="list-style:disc;padding-left:20px"><li>' .
-            implode( '</li><li>', array_map( 'esc_html', \$names ) ) .
-        '</li></ul>' .
-        '<p><a href="' . admin_url( 'plugins.php' ) . '" class="button button-primary">→ Go to Plugins</a></p>',
-        'Plugin Requirements Not Met',
-        [ 'back_link' => true ]
+function {$prefix}_register_setup_page(): void {
+    add_theme_page(
+        '{$name} — Theme Setup',
+        'Theme Setup',
+        'install_plugins',
+        '{$slug}-setup',
+        '{$prefix}_render_setup_page'
     );
 }
-add_action( 'after_switch_theme', '{$prefix}_check_plugins_on_activation' );
+add_action( 'admin_menu', '{$prefix}_register_setup_page' );
+
+// ── Render Setup Page ─────────────────────────────────────────────────────────
+
+function {$prefix}_render_setup_page(): void {
+    if ( ! function_exists( 'is_plugin_active' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
+
+    \$required = {$prefix}_required_plugins();
+    \$premium  = {$prefix}_premium_plugins();
+    \$missing  = {$prefix}_get_missing_plugins();
+    \$all_done = empty( \$missing );
+    ?>
+    <div class="wrap" id="{$slug}-setup-wrap" style="max-width:860px;">
+
+        <h1 style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:2rem;">⚡</span> {$name} — Theme Setup
+        </h1>
+
+        <?php if ( \$all_done ) : ?>
+            <div class="notice notice-success inline" style="padding:12px 16px;">
+                <p><strong>✅ All required plugins are installed and active!</strong>
+                Your theme is ready to use.
+                <a href="<?php echo esc_url( admin_url( 'customize.php' ) ); ?>" class="button button-primary" style="margin-left:12px;">
+                    → Open Customizer
+                </a>
+                </p>
+            </div>
+        <?php else : ?>
+            <div class="notice notice-warning inline" style="padding:12px 16px;">
+                <p><strong>⚠ Action Required:</strong>
+                Please install and activate all required plugins below before using this theme.</p>
+            </div>
+        <?php endif; ?>
+
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-top:24px;overflow:hidden;">
+            <div style="background:#1e1b4b;padding:16px 24px;color:#fff;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;">
+                📦 Required Plugins (WordPress.org)
+            </div>
+            <table class="widefat" style="border:none;">
+                <thead>
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th>Plugin</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( \$required as \$key => \$plugin ) :
+                        \$is_active    = is_plugin_active( \$plugin['file'] );
+                        \$is_installed = file_exists( WP_PLUGIN_DIR . '/' . dirname( \$plugin['file'] ) );
+
+                        if ( \$is_active ) {
+                            \$status_html = '<span style="color:#16a34a;font-weight:600;">✅ Active</span>';
+                            \$action_html = '—';
+                        } elseif ( \$is_installed ) {
+                            \$activate_url = wp_nonce_url(
+                                admin_url( 'plugins.php?action=activate&plugin=' . \$plugin['file'] ),
+                                'activate-plugin_' . \$plugin['file']
+                            );
+                            \$status_html = '<span style="color:#d97706;font-weight:600;">⚠ Installed, not active</span>';
+                            \$action_html = '<a href="' . esc_url( \$activate_url ) . '" class="button button-primary button-small">Activate</a>';
+                        } else {
+                            \$install_url = wp_nonce_url(
+                                admin_url( 'update.php?action=install-plugin&plugin=' . \$plugin['slug'] ),
+                                'install-plugin_' . \$plugin['slug']
+                            );
+                            \$status_html = '<span style="color:#dc2626;font-weight:600;">✗ Not installed</span>';
+                            \$action_html = '<a href="' . esc_url( \$install_url ) . '" class="button button-primary button-small">Install &amp; Activate</a>';
+                        }
+                    ?>
+                    <tr>
+                        <td style="text-align:center;font-size:18px;">
+                            <?php echo \$is_active ? '🟢' : ( \$is_installed ? '🟡' : '🔴' ); ?>
+                        </td>
+                        <td><strong><?php echo esc_html( \$plugin['name'] ); ?></strong></td>
+                        <td><?php echo \$status_html; ?></td>
+                        <td><?php echo \$action_html; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php if ( ! empty( \$premium ) ) : ?>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;margin-top:24px;overflow:hidden;">
+            <div style="background:#7c3aed;padding:16px 24px;color:#fff;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;">
+                ⭐ Premium Plugins (Bundled in Theme)
+            </div>
+            <table class="widefat" style="border:none;">
+                <thead>
+                    <tr>
+                        <th style="width:40px;"></th>
+                        <th>Plugin</th>
+                        <th>How to Install</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( \$premium as \$basename => \$pname ) : ?>
+                    <tr>
+                        <td style="text-align:center;font-size:18px;">⭐</td>
+                        <td>
+                            <strong><?php echo esc_html( \$pname ); ?></strong><br>
+                            <small style="color:#6b7280;">
+                                <code>/_plugins/<?php echo esc_html( \$basename ); ?>.zip</code>
+                            </small>
+                        </td>
+                        <td>
+                            <a href="<?php echo esc_url( admin_url( 'plugin-install.php' ) ); ?>" class="button button-secondary button-small">
+                                Plugins → Add New → Upload Plugin
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+
+        <div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">
+                💡 <strong>Tip:</strong> After installing all plugins, refresh this page.
+                Once all show <strong style="color:#16a34a;">✅ Active</strong>, your theme is fully ready.
+            </p>
+        </div>
+
+    </div>
+    <?php
+}
 PHP;
 
         $zip->addFromString(
@@ -383,6 +489,7 @@ PHP;
             $contents
         );
     }
+
 
     /**
      * Add ONLY premium plugins from local /plugins folder
