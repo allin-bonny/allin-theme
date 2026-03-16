@@ -221,12 +221,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 			<div class="form-row">
 				<div class="form-group">
 					<label for="name">Theme Name *</label>
-					<input type="text" id="name" name="name" placeholder="Bonny Starter"
+					<input type="text" id="name" name="name" placeholder="TDD Starter Theme"
 						value="<?= htmlspecialchars($_POST['name'] ?? '') ?>" required>
 				</div>
 				<div class="form-group">
 					<label for="slug">Theme Slug *</label>
-					<input type="text" id="slug" name="slug" placeholder="bonny-starter"
+					<input type="text" id="slug" name="slug" placeholder="tdd-starter-theme"
 						value="<?= htmlspecialchars($_POST['slug'] ?? '') ?>" required>
 					<p class="hint">Lowercase, hyphens only. Used for prefixes &amp; text domain.</p>
 				</div>
