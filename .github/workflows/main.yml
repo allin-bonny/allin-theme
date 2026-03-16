@@ -1,4 +1,4 @@
-name: Deploy via SFTP
+name: Deploy Changed Files via SFTP
 
 on:
   push:
@@ -7,26 +7,45 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to SFTP
+    name: Deploy Changed Files
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the git repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Install lftp
-        run: sudo apt-get install -y lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Deploy via SFTP
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "Detecting changed files..."
+          git diff --name-only HEAD^ HEAD > changed_files.txt
+          cat changed_files.txt
+
+      - name: Upload changed files via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SFTP_REMOTE_DIR: ${{ secrets.SFTP_REMOTE_DIR }}
         run: |
-          lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" sftp://"$SFTP_HOST" << EOF
-          set sftp:auto-confirm yes
-          set net:max-retries 3
-          mirror -R --delete --verbose ./ $SFTP_REMOTE_DIR
-          bye
-          EOF
+          echo "Uploading changed files..."
+
+          while IFS= read -r file
+          do
+            if [ -f "$file" ]; then
+              echo "Uploading $file"
+
+              lftp -u "$SFTP_USERNAME","$SFTP_PASSWORD" sftp://"$SFTP_HOST" -e "
+              set sftp:auto-confirm yes
+              mkdir -p $SFTP_REMOTE_DIR/$(dirname "$file");
+              put $file -o $SFTP_REMOTE_DIR/$file;
+              bye"
+            fi
+          done < changed_files.txt
+
+          
