@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>🚀 Bonny's WP Starter Kit Generator</title>
+	<title>Allin's WP Starter Theme Generator</title>
 	<style>
 		* {
 			box-sizing: border-box;
@@ -204,8 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 <body>
 	<div class="card">
 
-		<div class="logo">⚡ StarterKit</div>
-		<p class="tagline">Generate a branded WordPress starter kit in seconds</p>
+		<div class="logo">⚡ StarterTheme</div>
+		<p class="tagline">Generate a branded WordPress starter theme in seconds</p>
 
 		<?php if (!empty($errors)): ?>
 			<div class="errors">
@@ -216,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 
 		<form method="POST">
 
-			<p class="section-title">🎨 Theme Identity</p>
+			<p class="section-title">Theme Identity</p>
 
 			<div class="form-row">
 				<div class="form-group">
@@ -246,27 +246,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate'])) {
 				</div>
 				<div class="form-group">
 					<label for="author">Author</label>
-					<input type="text" id="author" name="author" placeholder="Bonny Elangbam"
-						value="<?= htmlspecialchars($_POST['author'] ?? '') ?>">
+					<input type="text" id="author" name="author" placeholder="TDD"
+						value="<?= htmlspecialchars($_POST['author'] ?? 'TDD') ?>">
 				</div>
 			</div>
 
 			<div class="form-row">
 				<div class="form-group">
 					<label for="author_uri">Author URI</label>
-					<input type="url" id="author_uri" name="author_uri" placeholder="https://yourdomain.com"
-						value="<?= htmlspecialchars($_POST['author_uri'] ?? '') ?>">
+					<input type="url" id="author_uri" name="author_uri" placeholder=""
+						value="<?= htmlspecialchars($_POST['author_uri'] ?? 'https://thedigitaldepartment.ie/') ?>">
 				</div>
 				<div class="form-group">
 					<label for="theme_uri">Theme URI</label>
-					<input type="url" id="theme_uri" name="theme_uri" placeholder="https://yourdomain.com/theme"
-						value="<?= htmlspecialchars($_POST['theme_uri'] ?? '') ?>">
+					<input type="url" id="theme_uri" name="theme_uri" placeholder=""
+						value="<?= htmlspecialchars($_POST['theme_uri'] ?? 'https://thedigitaldepartment.ie/') ?>">
 				</div>
 			</div>
 
 			<hr class="divider">
 
-			<p class="section-title">📦 Bundled Plugins</p>
+			<p class="section-title">Bundled Plugins</p>
 			<div class="plugins-list">
 
 				<?php
